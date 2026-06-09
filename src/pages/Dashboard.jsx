@@ -20,6 +20,9 @@ const Dashboard = () => {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("all");
   const [showForm, setShowForm] = useState(false);
+  const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
+  const [pagination, setPagination] = useState(null);
   const [form, setForm] = useState({
     company: "",
     role: "",
@@ -30,27 +33,38 @@ const Dashboard = () => {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
 
+  const fetchApplications = async (
+    currentPage = 1,
+    currentFilter = filter,
+    currentSearch = search,
+  ) => {
+    setLoading(true);
+    try {
+      const params = { page: currentPage, limit: 5 };
+      if (currentFilter !== "all") params.status = currentFilter;
+      if (currentSearch) params.search = currentSearch;
+
+      const res = await getApplications(params);
+      setApplications(res.data.data);
+      setPagination(res.data.pagination);
+      setPage(currentPage);
+    } catch (err) {
+      setError("Failed to fetch applications", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
     const load = async () => {
-      try {
-        const res = await getApplications();
-        setApplications(res.data.data);
-      } catch (err) {
-        setError("Failed to fetch applications", err);
-      } finally {
-        setLoading(false);
-      }
+      await fetchApplications(1, filter, search);
     };
     load();
   }, []);
 
-  const fetchApplications = async () => {
-    try {
-      const res = await getApplications();
-      setApplications(res.data.data);
-    } catch (err) {
-      setError("Failed to fetch applications", err);
-    }
+  const handleFilterChange = (s) => {
+    setFilter(s);
+    fetchApplications(1, s, search);
   };
 
   const handleChange = (e) =>
@@ -87,10 +101,7 @@ const Dashboard = () => {
     }
   };
 
-  const filtered =
-    filter === "all"
-      ? applications
-      : applications.filter((a) => a.status === filter);
+  const filtered = applications;
 
   return (
     <div className="min-h-screen bg-gray-50 text-gray-800">
@@ -167,14 +178,45 @@ const Dashboard = () => {
           </form>
         )}
 
+        <div className="flex gap-2 mb-4">
+          <input
+            type="text"
+            placeholder="Search by company or role..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter")
+                fetchApplications(1, filter, e.target.value);
+            }}
+            className="border border-gray-200 bg-white px-4 py-2 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 text-gray-800 text-sm w-72"
+          />
+          <button
+            onClick={() => fetchApplications(1, filter, search)}
+            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm transition"
+          >
+            Search
+          </button>
+          {search && (
+            <button
+              onClick={() => {
+                setSearch("");
+                fetchApplications(1, filter, "");
+              }}
+              className="bg-gray-100 hover:bg-gray-200 text-gray-600 px-4 py-2 rounded-lg text-sm transition"
+            >
+              Clear
+            </button>
+          )}
+        </div>
+
         {/* Filter */}
         <div className="flex gap-2 mb-6 flex-wrap">
           {["all", "applied", "interview", "offer", "rejected"].map((s) => (
             <button
               key={s}
-              onClick={() => setFilter(s)}
+              onClick={() => handleFilterChange(s)}
               className={`px-4 py-1.5 rounded-full text-sm font-medium capitalize transition
-                ${filter === s ? "bg-blue-600 text-white" : "bg-white border border-gray-200 text-gray-500 hover:bg-gray-100"}`}
+      ${filter === s ? "bg-blue-600 text-white" : "bg-white border border-gray-200 text-gray-500 hover:bg-gray-100"}`}
             >
               {s}
             </button>
@@ -225,6 +267,28 @@ const Dashboard = () => {
           </div>
         )}
       </div>
+
+      {pagination && pagination.totalPages > 1 && (
+        <div className="flex justify-center items-center gap-3 mt-6">
+          <button
+            onClick={() => fetchApplications(page - 1, filter, search)}
+            disabled={page === 1}
+            className="px-4 py-2 rounded-lg border border-gray-200 text-sm text-gray-600 hover:bg-gray-100 disabled:opacity-40 transition"
+          >
+            ← Prev
+          </button>
+          <span className="text-sm text-gray-500">
+            Page {pagination.page} of {pagination.totalPages}
+          </span>
+          <button
+            onClick={() => fetchApplications(page + 1, filter, search)}
+            disabled={page === pagination.totalPages}
+            className="px-4 py-2 rounded-lg border border-gray-200 text-sm text-gray-600 hover:bg-gray-100 disabled:opacity-40 transition"
+          >
+            Next →
+          </button>
+        </div>
+      )}
     </div>
   );
 };

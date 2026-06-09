@@ -33,7 +33,7 @@ export const register = (data) => api.post('/auth/register', data);
 export const login = (data) => api.post('/auth/login', data);
 
 // Applications
-export const getApplications = () => api.get('/applications');
+export const getApplications = (params = {}) => api.get('/applications', { params });
 export const getApplicationById = (id) => api.get(`/applications/${id}`);
 export const getStatusHistory = (id) => api.get(`/applications/${id}/history`);
 export const createApplication = (data) => api.post('/applications', data);
